@@ -1,6 +1,6 @@
-from flask import Flask
+from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager, UserMixin
+from flask_login import LoginManager, UserMixin, login_required, current_user
 from datetime import datetime
 
 app = Flask(__name__)
@@ -26,6 +26,21 @@ class Message(db.Model):
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
 # TODO: Define API endpoints
+# Example sending message route
+@app.route('/send_message', methods=['POST'])
+@login_required
+def send_message():
+    recipient_username = request.json.get('recipient')
+    content = request.json.get('content')
+    
+    recipient = User.query.filter_by(username=recipient_username).first()
+    if recipient:
+        message = Message(sender_id=current_user.id, recipient_id=recipient.id, content=content)
+        db.session.add(message)
+        db.session.commit()
+        return jsonify({'message': 'Message sent successfully'}), 200
+    else:
+        return jsonify({'error': 'Recipient not found'}), 404
 
 if __name__ == '__main__':
     app.run(debug=True)
