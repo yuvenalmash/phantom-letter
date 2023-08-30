@@ -30,17 +30,18 @@ class Message(db.Model):
 @app.route('/send_message', methods=['POST'])
 @login_required
 def send_message():
-    recipient_username = request.json.get('recipient')
-    content = request.json.get('content')
-    
-    recipient = User.query.filter_by(username=recipient_username).first()
-    if recipient:
-        message = Message(sender_id=current_user.id, recipient_id=recipient.id, content=content)
-        db.session.add(message)
-        db.session.commit()
-        return jsonify({'message': 'Message sent successfully'}), 200
-    else:
-        return jsonify({'error': 'Recipient not found'}), 404
+    with app.app_context():
+        recipient_username = request.json.get('recipient')
+        content = request.json.get('content')
+        
+        recipient = User.query.filter_by(username=recipient_username).first()
+        if recipient:
+            message = Message(sender_id=current_user.id, recipient_id=recipient.id, content=content)
+            db.session.add(message)
+            db.session.commit()
+            return jsonify({'message': 'Message sent successfully'}), 200
+        else:
+            return jsonify({'error': 'Recipient not found'}), 404
 
 if __name__ == '__main__':
     app.run(debug=True)
