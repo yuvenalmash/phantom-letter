@@ -6,6 +6,10 @@ from sqlalchemy import pool
 
 from alembic import context
 
+from sqlalchemy import create_engine
+import re
+
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
@@ -26,8 +30,8 @@ target_metadata = None
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 
-def get_url():
-    return os.getenv('DATABASE_URI')
+# def get_url():
+#     return os.getenv('DATABASE_URI')
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
@@ -41,7 +45,16 @@ def run_migrations_offline() -> None:
     script output.
 
     """
+
+    url_tokens = {
+        "DATABASE_URI": os.getenv("DATABASE_URI", ""),
+    }
+
     url = config.get_main_option("sqlalchemy.url")
+
+    for token, value in url_tokens.items():
+        url = re.sub(f"{{{token}}}", value, url)
+    
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -60,6 +73,22 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
+
+    url_tokens = {
+        "DATABASE_URI": os.getenv("DATABASE_URI", ""),
+    }
+
+    print('url_tokens', url_tokens)
+
+    url = config.get_main_option("sqlalchemy.url")
+
+    print('url', url) # ${DATABASE_URI}
+
+    for token, value in url_tokens.items():
+        url = re.sub(f"{{{token}}}", value, url)
+
+    connectable = create_engine(url)
+
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
