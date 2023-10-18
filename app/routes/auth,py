@@ -1,0 +1,59 @@
+from flask import Blueprint, request, jsonify, abort
+from app.models import User, Message, db
+from app.utils.encryption import generate_key_pair, save_key_to_file, load_key_from_file
+
+bp = Blueprint('auth', __name__, url_prefix='/auth')
+
+@bp.route('/register', methods=['POST'])
+def register():
+  data = request.get_json()
+  username = data.get('username')
+  password = data.get('password')
+
+  # Data validation
+  if not username or not password:
+    return abort(400, description='Missing username or password')
+  
+  # Check if user already exists
+  user = User.query.filter_by(username=username).first()
+  if user:
+    return abort(400, description='Username already exists')
+  
+  # Generate an RSA key pair
+  key, encrypted_key = generate_key_pair(password)
+  save_key_to_file(encrypted_key, f'{username}_private.pem')
+
+  # Create a new user
+  user = User(username=username, private_key=encrypted_key)
+  user.set_password(password)
+  db.session.add(user)
+  db.session.commit()
+
+  return jsonify(message='User created successfully')
+
+@bp.route('/login', methods=['POST'])
+def login():
+  data = request.get_json()
+  username = data.get('username')
+  password = data.get('password')
+
+  # Data validation
+  if not username or not password:
+    return abort(400, description='Missing username or password')
+  
+  # Check if user exists
+  user = User.query.filter_by(username=username).first()
+  if not user:
+    return abort(400, description='Incorrect username or password')
+  
+  # Check if password is correct
+  if not user.check_password(password):
+    return abort(400, description='Incorrect username or password')
+  
+  # Load the user's private key
+  private_key = load_key_from_file(f'{username}_private.pem', password)
+
+  # Generate a JWT
+  jwt = user.generate_jwt()
+
+  return jsonify(jwt=jwt)
