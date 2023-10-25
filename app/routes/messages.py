@@ -41,3 +41,16 @@ def send_message():
   db.session.commit()
 
   return jsonify(message='Message sent successfully')
+
+@bp.route('/<username>', methods=['GET'])
+def get_messages(username):
+  # Check if user exists
+  user = User.query.filter_by(username=username).first()
+  if not user:
+    return abort(400, description='Incorrect username')
+  
+  # Get all messages sent to the user
+  messages = Message.query.filter_by(recipient_id=user.id).all()
+  messages = [message.serialize() for message in messages]
+
+  return jsonify(messages=messages)
