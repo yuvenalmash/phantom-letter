@@ -54,3 +54,28 @@ def get_messages(username):
   messages = [message.serialize() for message in messages]
 
   return jsonify(messages=messages)
+
+@bp.route('/<username>/decrypt', methods=['POST'])
+def decrypt_messages(username):
+  data = request.get_json()
+  encrypted_messages = data.get('encrypted_messages')
+
+  # Data validation
+  if not encrypted_messages:
+    return abort(400, description='Missing encrypted messages')
+  
+  # Check if user exists
+  user = User.query.filter_by(username=username).first()
+  if not user:
+    return abort(400, description='Incorrect username')
+  
+  # Load the user's private key
+  user_private_key = load_key_from_file(f'{username}_private.pem', user.password)
+
+  # Decrypt the messages
+  decrypted_messages = []
+  for message in encrypted_messages:
+    decrypted_message = rsa_decrypt(user_private_key, message)
+    decrypted_messages.append(decrypted_message)
+
+  return jsonify(decrypted_messages=decrypted_messages)
